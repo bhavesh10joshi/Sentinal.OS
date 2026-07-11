@@ -5,12 +5,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GenerateResponse = GenerateResponse;
 const generative_ai_1 = require("@google/generative-ai");
-const Arrays_1 = require("../CustomArrays/Arrays");
 const path_1 = __importDefault(require("path"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const envPath = path_1.default.resolve(process.cwd(), ".env");
 dotenv_1.default.config({ path: envPath });
-async function GenerateResponse() {
+async function GenerateResponse(Collections) {
+    const ResponseArray = [];
     if (!process.env.GOOGLE_SDK_API_CREDENTIALS) {
         throw new Error("API key is not Present , Check and try again later ...");
     }
@@ -24,7 +24,7 @@ async function GenerateResponse() {
         }
     });
     console.log("\n Sending code blocks to Sentinel.OS AI Core for review...");
-    for (const block of Arrays_1.Collections) {
+    for (const block of Collections) {
         console.log(`\n Reviewing function [${block.name}] (Lines ${block.startLine}-${block.endLine})...`);
         // Refined prompt explicitly describing the JSON keys expected
         const systemPrompt = `
@@ -52,7 +52,12 @@ async function GenerateResponse() {
                 const rawJsonText = response.response.text();
                 // Parse it to prove it's valid JSON
                 const jsonOutput = JSON.parse(rawJsonText);
-                console.dir(jsonOutput, { depth: null, colors: true });
+                ResponseArray.push({
+                    functionname: block.name,
+                    startLine: block.startLine,
+                    endLine: block.endLine,
+                    analysis: jsonOutput
+                });
             }
             else {
                 console.log("No response text found.");
@@ -65,5 +70,6 @@ async function GenerateResponse() {
             continue; // Keep tracking downstream elements regardless of independent failures
         }
     }
+    return ResponseArray;
 }
 //# sourceMappingURL=AIParsing.js.map

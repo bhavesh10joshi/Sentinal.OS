@@ -1,12 +1,13 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { Collections } from '../CustomArrays/Arrays';
 import path from 'path';
 import dotenv from 'dotenv';
 
 const envPath = path.resolve(process.cwd(), ".env");
 dotenv.config({ path: envPath });
 
-export async function GenerateResponse() {
+export async function GenerateResponse(Collections:any) {
+    const ResponseArray:any = [];
+
     if (!process.env.GOOGLE_SDK_API_CREDENTIALS) {
         throw new Error("API key is not Present , Check and try again later ...");   
     }
@@ -56,8 +57,13 @@ export async function GenerateResponse() {
                 
                 // Parse it to prove it's valid JSON
                 const jsonOutput = JSON.parse(rawJsonText);
-                console.dir(jsonOutput, { depth: null, colors: true });
                 
+                ResponseArray.push({
+                    functionname : block.name , 
+                    startLine : block.startLine , 
+                    endLine : block.endLine , 
+                    analysis : jsonOutput
+                });
             } else {
                 console.log("No response text found.");
             }        
@@ -69,4 +75,5 @@ export async function GenerateResponse() {
             continue; // Keep tracking downstream elements regardless of independent failures
         }
     }
+    return ResponseArray;
 }
