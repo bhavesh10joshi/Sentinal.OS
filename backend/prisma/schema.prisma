@@ -1,0 +1,45 @@
+datasource db {
+  provider = "mongodb"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Tracks overall scan runs
+model ScanReport {
+  id                 String          @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt          DateTime        @default(now())
+  userId             String          // Added to track who owns this scan record
+  fileName           String?         
+  totalBlocksScanned Int
+  success            Boolean         @default(true)
+  findings           Vulnerability[]
+  systemLogs         TelemetryLog[]
+
+  @@index([userId]) // Indexes the userId so historical lookups are lightning fast
+}
+
+// Tracks individual vulnerabilities embedded or linked back to the scan
+model Vulnerability {
+  id                 String     @id @default(auto()) @map("_id") @db.ObjectId
+  scanReportId       String     @db.ObjectId
+  scanReport         ScanReport @relation(fields: [scanReportId], references: [id], onDelete: Cascade)
+  functionName       String
+  startLine          Int
+  endLine            Int
+  vulnerabilityFound Boolean
+  severity           String     // CRITICAL, HIGH, MEDIUM, LOW, NONE
+  issueSummary       String
+  remediationCode    String
+}
+
+// Telemetry activity logs generated during execution
+model TelemetryLog {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  scanReportId String     @db.ObjectId
+  scanReport   ScanReport @relation(fields: [scanReportId], references: [id], onDelete: Cascade)
+  timestamp    DateTime   @default(now())
+  message      String
+  type         String     // info, success, warn, agent
+}
