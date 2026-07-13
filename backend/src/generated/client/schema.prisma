@@ -1,19 +1,18 @@
-
 datasource db {
-  provider = "mongodb" 
-  url      = env("DATABASE_URL")
+  provider = "mongodb"
 }
 
 generator client {
-  provider = "prisma-client-js" // 🌟 Reverted to the stable v6 engine provider
+  provider = "prisma-client-js"
+  output   = "../src/generated/client" // 🌟 Forces Prisma to compile directly inside your src folder
 }
 
 // Tracks overall scan runs
 model ScanReport {
   id                 String          @id @default(auto()) @map("_id") @db.ObjectId
   createdAt          DateTime        @default(now())
-  userId             String          // Added to track who owns this scan record
-  fileName           String?         
+  userId             String // Added to track who owns this scan record
+  fileName           String?
   totalBlocksScanned Int
   success            Boolean         @default(true)
   findings           Vulnerability[]
@@ -31,7 +30,7 @@ model Vulnerability {
   startLine          Int
   endLine            Int
   vulnerabilityFound Boolean
-  severity           String     // CRITICAL, HIGH, MEDIUM, LOW, NONE
+  severity           String // CRITICAL, HIGH, MEDIUM, LOW, NONE
   issueSummary       String
   remediationCode    String
 }
@@ -43,5 +42,5 @@ model TelemetryLog {
   scanReport   ScanReport @relation(fields: [scanReportId], references: [id], onDelete: Cascade)
   timestamp    DateTime   @default(now())
   message      String
-  type         String     // info, success, warn, agent
+  type         String // info, success, warn, agent
 }

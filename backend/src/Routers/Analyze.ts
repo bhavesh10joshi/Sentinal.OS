@@ -1,9 +1,8 @@
-import {response, Router} from 'express';
-import { runParser } from '../Functions/RunParser';
-import { GenerateResponse } from '../GeminiAISDK/AIParsing';
+import { Router} from 'express';
 import { SuccessStatusCodes , ClientErrorStatusCodes , ServerErrors} from '../StatusCodes/StatusCodes';
 import multer from 'multer'; 
 import prisma from '../Db/Db';
+import scanQueue from '../Queues/scanQueue';
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -27,43 +26,21 @@ AnalyzeRouter.post("/raw" , async function(req:any , res:any)
 
     // Generating the parse code for the given code
     try{
-        const Collections:any = await runParser(RawCode);
-        const Response:any = await GenerateResponse(Collections);
-
-        const SavedReport = await prisma.scanReport.create({
-            data: {
-                userId : userId , 
-                fileName: "Raw Snippet SandBox" , 
-                totalBlocksScanned : Collections.length ,
-                success : true , 
-                findings : {
-                    create: Response.map((item : any) => ({
-                        functionName : item.functionName , 
-                        startLine : item.startLine , 
-                        endLine : item.endLine , 
-                        vulnerabilityFound : item.analysis.vulnerabilityFound , 
-                        severity : item.analysis.severity , 
-                        issueSummary : item.analysis.issueSummary , 
-                        remediationCode : item.analysis.remediationCode
-                    }))
-                }
-            },
-            include : {
-                findings : true
-            } 
-        })
+        const job = await scanQueue.add("processRawCode", {
+            userId : userId , 
+            fileName : "Raw Snippet Sandbox" ,
+            codeString : RawCode
+        }); 
 
         return res.json({
             success: true,
-            reportId: SavedReport.id,
-            fileName: SavedReport.fileName,
-            TotalBlocksScanned: SavedReport.totalBlocksScanned,
-            findings: SavedReport.findings
+            message : "Code Snippet accepted into the Queue for Further Execution ." , 
+            jobId : job.id
         });
     }
     catch(e)
     {
-        console.log("Pipeline Failure : " + e)
+        console.log("Raw Code uploadind in Queue Failure !");
         res.status(ServerErrors.InternalServerError).json({
             success : false , 
             error : "Internal Server Error Encountered , Completely dropped the execution ." , 
@@ -91,44 +68,23 @@ AnalyzeRouter.post("/file" , upload.single("codeFile") , async function(req:any 
         
         console.log(`Received file: ${req.file.originalname} (${req.file.size} bytes)`);
 
-        // Storing the functions and other attributes in the collection
-        const Collections:any = await runParser(FileContent);
-        const Response = await GenerateResponse(Collections);
-
-        const SavedReport = await prisma.scanReport.create({
-            data : {
-                userId : userId ,
-                fileName : req.file.originalname , 
-                totalBlocksScanned : Collections.length , 
-                success : true , 
-                findings : {
-                    create : Response.map((item : any)=>({
-                        functionName: item.functionname || item.functionName,
-                        startLine: item.startLine,
-                        endLine: item.endLine,
-                        vulnerabilityFound: item.analysis.vulnerabilityFound,
-                        severity: item.analysis.severity,
-                        issueSummary: item.analysis.issueSummary,
-                        remediationCode: item.analysis.remediationCode
-                    }))
-                }
-            },
-            include: {
-                findings: true 
-            }           
+        const job = await scanQueue.add("processFileCode" , {
+            userId : userId , 
+            fileName : req.file.originalname , 
+            codeString : FileContent
         });
 
         res.status(SuccessStatusCodes.Success).json({
             success: true,
-            reportId: SavedReport.id,
-            fileName: SavedReport.fileName,
-            TotalBlocksScanned: SavedReport.totalBlocksScanned,
-            findings: SavedReport.finding
+            message : `File ${req.file.originalname} queued for security verification streaming` , 
+            jobId : job.id
         }); 
+
         return;
     }
-    catch(e)
+    catch(e:any)
     {
+        console.log("File Queue Failure encountered !");
         res.status(ServerErrors.InternalServerError).json({
             success : false , 
             error : "Internal server Error Occurred !" , 
@@ -180,5 +136,74 @@ AnalyzeRouter.get("/history" , async function(req:any , res:any)
         });
         return;  
     }
-})
+});
+// Api endpoint to Know whether the job is completed or still executing in the background 
+AnalyzeRouter.get("/status/:jobId" , async function(req:any , res:any)
+{
+    const { jobId } = req.params;
+    
+    if(!jobId)
+    {
+        res.status(ClientErrorStatusCodes.BadRequest).json({
+            success : false , 
+            message : "JobId was not provided by the user !",
+        });
+        return;
+    }
+
+    try{
+        const job =  await scanQueue.getJob(jobId);
+
+        if(!job)
+        {
+            res.status(ServerErrors.NoServerResponse).json({
+                success : false , 
+                status : "UNKNOWN" , 
+                message : "Job tracking refrences expired or not found within current buffers !" 
+            });
+            return;
+        }
+        // This is the job state , tells us what is the state of the job in the queue . States : ("active" | "completed" | "failed" | "waiting" | "delayed")
+        const jobState = await job.getState();
+
+        // getting any value that is returned by the background working thread
+        const jobResult = job.returnvalue();
+
+        // Job finished processing cleanly
+        if (jobState === "completed") {
+            return res.json({
+                success: true,
+                status: "COMPLETED",
+                progress: 100,
+                result: jobResult
+            });
+        }
+
+        // The background runtime pipeline encountered a failure
+        if (jobState === "failed") {
+            return res.json({
+                success: false,
+                status: "FAILED",
+                progress: 0,
+                reason: job.failedReason || "Background pipeline dropped execution unexpectedly."
+            });
+        }
+
+        // Job is still sitting in queue line or currently spinning inside the worker thread
+        return res.json({
+            success: true,
+            status: jobState.toUpperCase(), // Returns "ACTIVE" or "WAITING"
+            progress: jobState === "active" ? 50 : 10 // Quick estimations for your frontend loading bar
+        });
+    } 
+    catch(e : any)
+    {
+        console.error("Telemetry Retrieval Failure: ", e);
+        return res.status(500).json({
+            success: false,
+            error: "Failed to query system telemetry indexes.",
+            details: e instanceof Error ? e.message : e
+        });
+    }
+});
 export default AnalyzeRouter;
