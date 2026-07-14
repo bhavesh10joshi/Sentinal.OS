@@ -1,0 +1,100 @@
+import { useNavigate, useLocation } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  Terminal,
+  GitBranch,
+  Search,
+  FlaskConical,
+  BarChart3,
+  Shield,
+  Gavel,
+  Inbox,
+  LogOut,
+} from 'lucide-react'
+import { SentinelIcon } from '../Ui/Icons/SentinelIcon'
+import { useAuthStore } from '../Store/useAuthStore'
+
+interface NavItem {
+  icon: React.ReactNode
+  label: string
+  route: string
+}
+
+// Vertical floating glass sidebar dock — pill-shaped, fixed left
+export function FloatingDock() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const logout = useAuthStore((s) => s.logout)
+
+  const navItems: NavItem[] = [
+    { icon: <LayoutDashboard size={20} />, label: 'Dashboard', route: '/Sentinel/Dashboard' },
+    { icon: <Inbox size={20} />, label: 'Ingestion', route: '/Sentinel/Ingestion' },
+    { icon: <Shield size={20} />, label: 'Diagnostics', route: '/Sentinel/Diagnostics' },
+    { icon: <GitBranch size={20} />, label: 'GitHub', route: '/Sentinel/GitHub' },
+    { icon: <Search size={20} />, label: 'Search', route: '/Sentinel/Search' },
+    { icon: <FlaskConical size={20} />, label: 'Playground', route: '/Sentinel/Playground' },
+    { icon: <BarChart3 size={20} />, label: 'Analytics', route: '/Sentinel/Analytics' },
+    { icon: <Gavel size={20} />, label: 'Legal', route: '/Sentinel/Legal' },
+    { icon: <Terminal size={20} />, label: 'Terminal', route: '/Sentinel/Playground' },
+  ]
+
+  const handleLogout = () => {
+    logout()
+    navigate('/LandingPage')
+  }
+
+  return (
+    // Floating vertical dock — 24px from left, pill-shaped glass
+    <aside className="fixed left-6 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-2 py-5 px-3 glass-dock rounded-full">
+
+      {/* Logo mark at top */}
+      <button
+        onClick={() => navigate('/Sentinel/Dashboard')}
+        className="mb-3 p-1 rounded-full hover:scale-110 transition-transform"
+        title="Home"
+      >
+        <SentinelIcon size={24} />
+      </button>
+
+      <div className="w-8 h-px bg-outline-variant/40 mb-1" />
+
+      {/* Nav icons */}
+      {navItems.map((item) => {
+        const active = location.pathname === item.route
+        return (
+          <button
+            key={item.route}
+            onClick={() => navigate(item.route)}
+            title={item.label}
+            className={`group relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-200 ${
+              active
+                ? 'bg-primary-container text-on-primary-container shadow-glow-blue scale-110'
+                : 'text-on-surface-variant hover:bg-surface-container hover:text-primary hover:scale-110'
+            }`}
+          >
+            {item.icon}
+
+            {/* Tooltip on hover */}
+            <span className="absolute left-14 px-2 py-1 rounded-md bg-on-surface text-surface text-xs font-medium
+                             whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none
+                             shadow-glass-lg">
+              {item.label}
+            </span>
+          </button>
+        )
+      })}
+
+      <div className="w-8 h-px bg-outline-variant/40 mt-1" />
+
+      {/* Logout */}
+      <button
+        onClick={handleLogout}
+        title="Sign Out"
+        className="mt-1 w-10 h-10 flex items-center justify-center rounded-full text-on-surface-variant
+                   hover:bg-error-container/30 hover:text-error hover:scale-110 transition-all"
+      >
+        <LogOut size={18} />
+      </button>
+    </aside>
+  )
+}

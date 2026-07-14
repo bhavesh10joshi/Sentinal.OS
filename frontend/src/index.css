@@ -1,86 +1,158 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  body {
-    background-color: #faf8fe;
-    font-family: 'Inter', sans-serif;
-    color: #1a1b1f;
-    overflow-x: hidden;
-  }
+/* -----------------------------------------------
+   Global reset & scrollbar suppression
+----------------------------------------------- */
+*::-webkit-scrollbar { display: none; }
+* { -ms-overflow-style: none; scrollbar-width: none; }
+body::-webkit-scrollbar { display: none; }
+
+/* -----------------------------------------------
+   Base typography
+----------------------------------------------- */
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: #faf8fe;
+  color: #1a1b1f;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-@layer components {
-  .glass-card {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-    transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-  }
-
-  .glass-card:hover {
-    transform: translateY(-4px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
-    border-color: rgba(255, 255, 255, 0.6);
-  }
-
-  .glass-panel {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-  }
-
-  .hover-lift {
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-
-  .hover-lift:hover {
-    transform: translateY(-4px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
-  }
-
-  .specular-highlight {
-    position: relative;
-  }
-
-  .specular-highlight::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, transparent 50%, rgba(255,255,255,0.2) 100%);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-  }
-
-  .network-gradient {
-    background: radial-gradient(circle at center, rgba(0, 113, 227, 0.08) 0%, transparent 70%);
-  }
+/* -----------------------------------------------
+   Glassmorphism card utility
+----------------------------------------------- */
+.glass-card {
+  background: rgba(255, 255, 255, 0.70);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.40);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
-@layer utilities {
-  .breathing-pulse {
-    animation: breathe 4s ease-in-out infinite;
-  }
+.glass-panel {
+  background: rgba(255, 255, 255, 0.80);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.50);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.06);
+}
 
-  @keyframes breathe {
-    0%, 100% { opacity: 0.4; transform: scale(0.95); }
-    50% { opacity: 0.8; transform: scale(1.1); }
-  }
+.glass-dock {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(255, 255, 255, 0.60);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+}
 
-  .dashboard-bg {
-    background: radial-gradient(circle at top right, #f4f3f8, #faf8fe);
-    min-height: 100vh;
-  }
+/* -----------------------------------------------
+   Specular highlight border on glass surfaces
+----------------------------------------------- */
+.specular-edge {
+  border: 1px solid rgba(255, 255, 255, 0.40);
+}
+
+/* -----------------------------------------------
+   Status pulse animations
+----------------------------------------------- */
+.pulse-active {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.pulse-queued {
+  animation: pulse-ring 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(1.15); }
+}
+
+/* -----------------------------------------------
+   Scan line overlay
+----------------------------------------------- */
+.scan-line {
+  height: 2px;
+  background: linear-gradient(to right, transparent, #0059b5, transparent);
+  position: absolute;
+  width: 100%;
+  top: 0;
+  animation: scan 4s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes scan {
+  0%   { top: -2%; }
+  100% { top: 102%; }
+}
+
+/* -----------------------------------------------
+   Terminal cursor blink
+----------------------------------------------- */
+.terminal-cursor {
+  display: inline-block;
+  width: 8px;
+  height: 18px;
+  background-color: #0071e3;
+  animation: blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+
+@keyframes blink { 50% { opacity: 0; } }
+
+/* -----------------------------------------------
+   Text glow (primary blue)
+----------------------------------------------- */
+.text-glow {
+  text-shadow: 0 0 20px rgba(0, 89, 181, 0.35);
+}
+
+/* -----------------------------------------------
+   Hover lift on cards
+----------------------------------------------- */
+.card-hover {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card-hover:hover {
+  transform: scale(1.015) translateY(-2px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.07);
+}
+
+/* -----------------------------------------------
+   Stream panel slide-in transition
+----------------------------------------------- */
+.stream-enter {
+  transform: translateX(100%);
+  opacity: 0;
+}
+.stream-enter-active {
+  transform: translateX(0);
+  opacity: 1;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.35s ease;
+}
+.stream-exit {
+  transform: translateX(0);
+  opacity: 1;
+}
+.stream-exit-active {
+  transform: translateX(100%);
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+/* -----------------------------------------------
+   Code / mono blocks
+----------------------------------------------- */
+code, pre, .font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* -----------------------------------------------
+   Selection highlight
+----------------------------------------------- */
+::selection {
+  background-color: #d7e2ff;
+  color: #001b3f;
 }
