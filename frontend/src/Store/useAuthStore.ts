@@ -1,45 +1,45 @@
 import { create } from 'zustand'
 
-// Auth user shape
-interface User {
-  id: string
-  name: string
-  email: string
-  avatar?: string
-}
-
+// The backend identifies users purely by a userId string — no JWT/session tokens
+// Users set their workspace identity once on first visit (stored in localStorage)
 interface AuthState {
-  user: User | null
-  token: string | null
-  isAuthenticated: boolean
-  // UI state
+  userId: string | null
+  displayName: string | null
+  isIdentified: boolean
+
+  // Stream panel (right-side slide-out showing live job logs)
   streamPanelOpen: boolean
-  streamPanelContent: string
+  streamPanelJobId: string | null
+  streamPanelLabel: string
+
   // Actions
-  setAuth: (user: User, token: string) => void
-  logout: () => void
-  openStreamPanel: (content: string) => void
+  setIdentity: (userId: string, displayName: string) => void
+  clearIdentity: () => void
+  openStreamPanel: (jobId: string, label: string) => void
   closeStreamPanel: () => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  token: localStorage.getItem('sentinel_token'),
-  isAuthenticated: !!localStorage.getItem('sentinel_token'),
+  userId: localStorage.getItem('sentinel_user_id'),
+  displayName: localStorage.getItem('sentinel_display_name'),
+  isIdentified: !!localStorage.getItem('sentinel_user_id'),
 
   streamPanelOpen: false,
-  streamPanelContent: '',
+  streamPanelJobId: null,
+  streamPanelLabel: '',
 
-  setAuth: (user, token) => {
-    localStorage.setItem('sentinel_token', token)
-    set({ user, token, isAuthenticated: true })
+  setIdentity: (userId, displayName) => {
+    localStorage.setItem('sentinel_user_id', userId)
+    localStorage.setItem('sentinel_display_name', displayName)
+    set({ userId, displayName, isIdentified: true })
   },
 
-  logout: () => {
-    localStorage.removeItem('sentinel_token')
-    set({ user: null, token: null, isAuthenticated: false })
+  clearIdentity: () => {
+    localStorage.removeItem('sentinel_user_id')
+    localStorage.removeItem('sentinel_display_name')
+    set({ userId: null, displayName: null, isIdentified: false })
   },
 
-  openStreamPanel: (content) => set({ streamPanelOpen: true, streamPanelContent: content }),
-  closeStreamPanel: () => set({ streamPanelOpen: false }),
+  openStreamPanel: (jobId, label) => set({ streamPanelOpen: true, streamPanelJobId: jobId, streamPanelLabel: label }),
+  closeStreamPanel: () => set({ streamPanelOpen: false, streamPanelJobId: null }),
 }))

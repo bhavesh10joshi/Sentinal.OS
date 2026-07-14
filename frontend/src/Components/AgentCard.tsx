@@ -43,7 +43,7 @@ export function AgentCard({
   return (
     <div
       ref={ref}
-      onClick={() => openStreamPanel(name)}
+      onClick={() => openStreamPanel(name, role)}
       className="glass-card rounded-xl p-5 card-hover cursor-pointer group relative overflow-hidden"
     >
       {/* Specular highlight top border */}

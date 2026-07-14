@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Route, Routes, Navigate } from 'react-router-dom'
 import './App.css'
 
 import { LandingPage } from './Pages/LandingPage'
@@ -14,40 +14,49 @@ import { Analytics } from './Pages/Analytics'
 import { LegalConsole } from './Pages/LegalConsole'
 import { useAuthStore } from './Store/useAuthStore'
 
-// Root route — redirect to dashboard if authenticated, else landing page
-function RootRoute() {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  if (isAuthenticated) {
-    return <Dashboard />
+// Guard wrapper — redirects to login if workspace identity is not set
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const isIdentified = useAuthStore((s) => s.isIdentified)
+  if (!isIdentified) {
+    return <Navigate to="/Sentinel/Login" replace />
   }
-  return <LandingPage />
+  return <>{children}</>
+}
+
+// Root: land on dashboard if identified, else go to landing page
+function RootRoute() {
+  const isIdentified = useAuthStore((s) => s.isIdentified)
+  return <Navigate to={isIdentified ? '/Sentinel/Dashboard' : '/LandingPage'} replace />
 }
 
 function App() {
   return (
-    <>
-      <BrowserRouter>
-        <Routes>
-          {/* Root — auto-redirects based on auth */}
-          <Route path="/" element={<RootRoute />} />
+    <BrowserRouter>
+      <Routes>
 
-          {/* Public */}
-          <Route path="/LandingPage"      element={<LandingPage />} />
-          <Route path="/Sentinel/Login"   element={<LogIn />} />
-          <Route path="/Sentinel/SignUp"  element={<SignUp />} />
+        {/* Root redirect */}
+        <Route path="/" element={<RootRoute />} />
 
-          {/* Authenticated app routes */}
-          <Route path="/Sentinel/Dashboard"   element={<Dashboard />} />
-          <Route path="/Sentinel/Ingestion"   element={<Ingestion />} />
-          <Route path="/Sentinel/Diagnostics" element={<Diagnostics />} />
-          <Route path="/Sentinel/GitHub"      element={<GitHubHub />} />
-          <Route path="/Sentinel/Search"      element={<SemanticSearch />} />
-          <Route path="/Sentinel/Playground"  element={<Playground />} />
-          <Route path="/Sentinel/Analytics"   element={<Analytics />} />
-          <Route path="/Sentinel/Legal"       element={<LegalConsole />} />
-        </Routes>
-      </BrowserRouter>
-    </>
+        {/* Public routes */}
+        <Route path="/LandingPage"     element={<LandingPage />} />
+        <Route path="/Sentinel/Login"  element={<LogIn />} />
+        <Route path="/Sentinel/SignUp" element={<SignUp />} />
+
+        {/* Protected — requires workspace identity to be set */}
+        <Route path="/Sentinel/Dashboard"   element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/Sentinel/Ingestion"   element={<ProtectedRoute><Ingestion /></ProtectedRoute>} />
+        <Route path="/Sentinel/Diagnostics" element={<ProtectedRoute><Diagnostics /></ProtectedRoute>} />
+        <Route path="/Sentinel/GitHub"      element={<ProtectedRoute><GitHubHub /></ProtectedRoute>} />
+        <Route path="/Sentinel/Search"      element={<ProtectedRoute><SemanticSearch /></ProtectedRoute>} />
+        <Route path="/Sentinel/Playground"  element={<ProtectedRoute><Playground /></ProtectedRoute>} />
+        <Route path="/Sentinel/Analytics"   element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
+        <Route path="/Sentinel/Legal"       element={<ProtectedRoute><LegalConsole /></ProtectedRoute>} />
+
+        {/* Catch-all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+
+      </Routes>
+    </BrowserRouter>
   )
 }
 

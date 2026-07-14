@@ -1,80 +1,156 @@
 import { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
-import { Play, Square, Terminal, RefreshCw, ChevronDown, Trash2 } from 'lucide-react'
+import { Play, Square, Terminal, RefreshCw, Trash2, Upload, ChevronDown, Loader2 } from 'lucide-react'
 import { FloatingDock } from '../Components/FloatingDock'
 import { StreamPanel } from '../Components/StreamPanel'
 import { GlassCard } from '../Components/GlassCard'
 import { WebGLShader } from '../Components/WebGLShader'
+import { useAuthStore } from '../Store/useAuthStore'
+import { VITE_BACKEND_URL } from '../BackendUrl/BackendUrl'
+import axios from 'axios'
 
 const PLAYBOOKS = [
-  'Full Repository Scan',
   'Auth Module Deep Dive',
+  'Full Repository Scan',
   'Dependency Vulnerability Audit',
-  'License Compliance Check',
   'OWASP Top 10 Scan',
-  'Custom Playbook...',
+  'Custom Code Snippet',
 ]
 
-const SAMPLE_LOG = [
-  '[00:00.00] Playground initialized — Sentinel.OS v4.2',
-  '[00:00.12] Loading playbook: "Auth Module Deep Dive"',
-  '[00:00.34] Agent fleet allocating: SecurityGuard, ASTParser',
-  '[00:01.02] Scanning: /src/auth (23 files)',
-  '[00:03.45] SecurityGuard: Found TOCTOU at JWTHandler.ts:142',
-  '[00:04.11] ASTParser: SQL injection vector at UserController.ts:88',
-  '[00:05.22] Generating remediation suggestions...',
-  '[00:06.10] Created 2 draft PRs (#1204, #1205)',
-  '[00:06.44] Playbook complete. 2 issues found, 2 PRs ready.',
-]
+// Default code snippet shown in the editor panel
+const DEFAULT_CODE = `// Paste your TypeScript / JavaScript / C++ code here
+// Sentinel.OS will parse it into AST blocks and analyze each function
+
+async function verifySession(sessionId: string) {
+  const session = await getCache(sessionId);
+  if (!session) throw new Error("Session not found");
+  
+  // Potential TOCTOU: session may expire between check and use
+  const user = await db.users.findById(session.userId);
+  return user;
+}
+
+function buildQuery(userId: string) {
+  // SQL injection risk — raw string interpolation
+  return db.query(\`SELECT * FROM users WHERE id=\${userId}\`);
+}
+`
 
 // Sentinel.OS — Playground Workspace
+// Connects to: POST /SentinalOS/api/Analyze/raw (raw code snippet)
+//              POST /SentinalOS/api/Analyze/file (file upload)
 export function Playground() {
-  const [running, setRunning] = useState(false)
+  const userId = useAuthStore((s) => s.userId) ?? 'anonymous_default_user'
+  const openStreamPanel = useAuthStore((s) => s.openStreamPanel)
+
+  const [code, setCode] = useState(DEFAULT_CODE)
   const [playbook, setPlaybook] = useState('Auth Module Deep Dive')
-  const [logLines, setLogLines] = useState<string[]>([])
   const [dropOpen, setDropOpen] = useState(false)
-  const termRef = useRef<HTMLDivElement>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [mode, setMode] = useState<'raw' | 'file'>('raw')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [lastJobId, setLastJobId] = useState<string | null>(null)
+  const [error, setError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
+
   const headerRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (headerRef.current) gsap.fromTo(headerRef.current, { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' })
+    if (headerRef.current) {
+      gsap.fromTo(headerRef.current, { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' })
+    }
   }, [])
 
-  const runPlaybook = () => {
-    setRunning(true)
-    setLogLines([])
-    let i = 0
-    const timer = setInterval(() => {
-      setLogLines((prev) => [...prev, SAMPLE_LOG[i]])
-      i++
-      if (i >= SAMPLE_LOG.length) {
-        clearInterval(timer)
-        setRunning(false)
-      }
-    }, 500)
-  }
-
-  const stopPlaybook = () => {
-    setRunning(false)
-    setLogLines((prev) => [...prev, '[INTERRUPTED] Playbook stopped by user.'])
-  }
-
-  useEffect(() => {
-    if (termRef.current) {
-      termRef.current.scrollTop = termRef.current.scrollHeight
+  // Submit raw code snippet to POST /SentinalOS/api/Analyze/raw
+  const handleRawSubmit = async () => {
+    if (!code.trim()) {
+      setError('Please paste some code to analyze.')
+      return
     }
-  }, [logLines])
+    setError('')
+    setSuccessMsg('')
+    setSubmitting(true)
+
+    try {
+      const { data } = await axios.post(`${VITE_BACKEND_URL}/SentinalOS/api/Analyze/raw`, {
+        RawCode: code,
+        userId: userId,
+      })
+
+      setLastJobId(data.jobId)
+      setSuccessMsg(`Queued successfully — Job ID: ${data.jobId}`)
+      // Open the stream panel to show live progress
+      openStreamPanel(data.jobId, `Raw Scan — ${playbook}`)
+    } catch (err: any) {
+      setError(err?.response?.data?.error ?? 'Failed to submit code. Is the backend running?')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  // Upload a code file to POST /SentinalOS/api/Analyze/file
+  const handleFileSubmit = async () => {
+    if (!selectedFile) {
+      setError('Please select a .ts / .js / .cpp file to upload.')
+      return
+    }
+    setError('')
+    setSuccessMsg('')
+    setSubmitting(true)
+
+    try {
+      const formData = new FormData()
+      // Backend looks for the field name "codeFile"
+      formData.append('codeFile', selectedFile)
+      formData.append('userId', userId)
+
+      const { data } = await axios.post(
+        `${VITE_BACKEND_URL}/SentinalOS/api/Analyze/file`,
+        formData,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      )
+
+      setLastJobId(data.jobId)
+      setSuccessMsg(`File queued — Job ID: ${data.jobId}`)
+      openStreamPanel(data.jobId, `File Scan — ${selectedFile.name}`)
+    } catch (err: any) {
+      setError(err?.response?.data?.error ?? 'Failed to upload file. Only .ts/.js/.cpp files are accepted.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null
+    if (file) {
+      const allowed = ['.ts', '.js', '.cpp']
+      const valid = allowed.some((ext) => file.name.endsWith(ext))
+      if (!valid) {
+        setError('Only .ts, .js, and .cpp files are supported.')
+        setSelectedFile(null)
+        return
+      }
+      setSelectedFile(file)
+      setError('')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background relative">
-      <div className="fixed inset-0 z-0 pointer-events-none"><WebGLShader opacity={0.18} className="w-full h-full" /></div>
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <WebGLShader opacity={0.18} className="w-full h-full" />
+      </div>
       <FloatingDock />
       <StreamPanel />
 
       <div className="relative z-10 ml-20 p-8">
         <div ref={headerRef} className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight text-on-surface">Playground Workspace</h1>
-          <p className="text-sm text-on-surface-variant mt-1">Sandbox environment for custom agent pipelines and security policy testing</p>
+          <p className="text-sm text-on-surface-variant mt-1">
+            Paste raw code or upload a file — Sentinel.OS agents will parse and analyze every function
+          </p>
+          <p className="text-xs font-mono text-primary mt-1">workspace: {userId}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -83,9 +159,33 @@ export function Playground() {
           <div className="lg:col-span-1 space-y-4">
             <GlassCard header={<h3 className="text-sm font-bold text-on-surface">Configuration</h3>}>
 
+              {/* Mode toggle */}
+              <div className="mb-4">
+                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2 block">
+                  Input Mode
+                </label>
+                <div className="flex gap-2">
+                  {(['raw', 'file'] as const).map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => setMode(m)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase transition-all ${
+                        mode === m
+                          ? 'bg-primary-container text-on-primary-container'
+                          : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                      }`}
+                    >
+                      {m === 'raw' ? 'Raw Code' : 'File Upload'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Playbook selector */}
               <div className="mb-4">
-                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2 block">Playbook</label>
+                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2 block">
+                  Playbook
+                </label>
                 <div className="relative">
                   <button
                     onClick={() => setDropOpen(!dropOpen)}
@@ -110,48 +210,76 @@ export function Playground() {
                 </div>
               </div>
 
-              {/* Target path */}
-              <div className="mb-4">
-                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2 block">Target Path</label>
-                <input
-                  type="text"
-                  defaultValue="/src/auth"
-                  className="w-full px-4 py-3 bg-surface-container/60 rounded-xl text-sm font-mono text-on-surface outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-
-              {/* Agent selection */}
-              <div className="mb-5">
-                <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2 block">Agents</label>
-                <div className="space-y-2">
-                  {['SecurityGuard', 'ASTParser', 'AutoMerge'].map((a) => (
-                    <label key={a} className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" defaultChecked className="accent-primary" />
-                      <span className="text-sm text-on-surface font-mono">{a}</span>
-                    </label>
-                  ))}
+              {/* File upload zone — only shown in file mode */}
+              {mode === 'file' && (
+                <div className="mb-4">
+                  <label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider mb-2 block">
+                    Source File (.ts / .js / .cpp)
+                  </label>
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-outline-variant/50 hover:border-primary/50 rounded-xl p-5 text-center cursor-pointer transition-all"
+                  >
+                    <Upload size={22} className="mx-auto text-on-surface-variant mb-2" />
+                    {selectedFile ? (
+                      <p className="text-xs font-semibold text-primary">{selectedFile.name}</p>
+                    ) : (
+                      <p className="text-xs text-on-surface-variant">Click to select file</p>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".ts,.js,.cpp"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
                 </div>
-              </div>
+              )}
 
-              {/* Run / Stop buttons */}
+              {/* Error / success feedback */}
+              {error && (
+                <div className="mb-3 p-3 rounded-xl bg-error-container/50 border border-error/10">
+                  <p className="text-xs text-error">{error}</p>
+                </div>
+              )}
+              {successMsg && (
+                <div className="mb-3 p-3 rounded-xl bg-success-container/50 border border-success/10">
+                  <p className="text-xs text-success font-mono">{successMsg}</p>
+                </div>
+              )}
+
+              {/* Run button */}
               <div className="flex gap-2">
                 <button
-                  onClick={running ? stopPlaybook : runPlaybook}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all ${
-                    running
-                      ? 'bg-error-container text-on-error-container hover:scale-105'
-                      : 'bg-primary-container text-on-primary-container hover:scale-105'
-                  } active:scale-95`}
+                  onClick={mode === 'raw' ? handleRawSubmit : handleFileSubmit}
+                  disabled={submitting}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all
+                    ${submitting ? 'opacity-60 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}
+                    bg-primary-container text-on-primary-container`}
                 >
-                  {running ? <><Square size={14} /> Stop</> : <><Play size={14} /> Run</>}
+                  {submitting ? (
+                    <><Loader2 size={14} className="animate-spin" /> Queuing...</>
+                  ) : (
+                    <><Play size={14} /> Run Scan</>
+                  )}
                 </button>
                 <button
-                  onClick={() => setLogLines([])}
+                  onClick={() => { setCode(DEFAULT_CODE); setSelectedFile(null); setError(''); setSuccessMsg('') }}
                   className="w-12 flex items-center justify-center glass-card rounded-xl hover:bg-white/80 transition-all"
+                  title="Reset"
                 >
                   <Trash2 size={15} className="text-on-surface-variant" />
                 </button>
               </div>
+
+              {/* Last job reference */}
+              {lastJobId && (
+                <div className="mt-3 p-3 rounded-xl bg-surface-container/40 text-center">
+                  <p className="text-[10px] text-on-surface-variant uppercase tracking-wider mb-1">Last Job</p>
+                  <p className="text-[11px] font-mono text-primary break-all">{lastJobId}</p>
+                </div>
+              )}
             </GlassCard>
 
             {/* Environment info */}
@@ -159,9 +287,11 @@ export function Playground() {
               <div className="space-y-2 text-xs">
                 {[
                   { key: 'Runtime',   val: 'Node 22 / WASM' },
-                  { key: 'Model',     val: 'Gemini 1.5 Pro' },
-                  { key: 'Mode',      val: 'Sandbox (no PRs)' },
-                  { key: 'Timeout',   val: '120s' },
+                  { key: 'Parser',    val: 'Web Tree-Sitter' },
+                  { key: 'AI Model',  val: 'Gemini (Google AI)' },
+                  { key: 'Queue',     val: 'BullMQ + Redis' },
+                  { key: 'Vector DB', val: 'Pinecone' },
+                  { key: 'Timeout',   val: 'Queue-managed' },
                 ].map((e) => (
                   <div key={e.key} className="flex justify-between py-1.5 border-b border-outline-variant/20 last:border-0">
                     <span className="text-on-surface-variant">{e.key}</span>
@@ -172,51 +302,59 @@ export function Playground() {
             </GlassCard>
           </div>
 
-          {/* Terminal output */}
+          {/* Code editor panel (raw mode) */}
           <div className="lg:col-span-2">
-            <div className="glass-card rounded-xl overflow-hidden h-full flex flex-col" style={{ minHeight: '600px' }}>
-              {/* Terminal chrome */}
-              <div className="flex items-center justify-between px-5 py-3 border-b border-black/5 bg-surface-container-highest/50">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-error/50" />
-                  <div className="w-3 h-3 rounded-full bg-warning-container" />
-                  <div className="w-3 h-3 rounded-full bg-success/50" />
+            {mode === 'raw' ? (
+              <div className="glass-card rounded-xl overflow-hidden flex flex-col" style={{ minHeight: '600px' }}>
+                {/* Editor chrome */}
+                <div className="flex items-center justify-between px-5 py-3 border-b border-black/5 bg-surface-container-highest/50">
+                  <div className="flex gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-error/50" />
+                    <div className="w-3 h-3 rounded-full bg-warning-container" />
+                    <div className="w-3 h-3 rounded-full bg-success/50" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Terminal size={14} className="text-on-surface-variant" />
+                    <span className="text-xs font-mono text-on-surface-variant">code-editor.ts</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {submitting && <RefreshCw size={13} className="text-primary animate-spin" />}
+                    <span className="text-[10px] text-on-surface-variant">{code.split('\n').length} lines</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Terminal size={14} className="text-on-surface-variant" />
-                  <span className="text-xs font-mono text-on-surface-variant">sentinel-playground</span>
-                </div>
-                {running && <RefreshCw size={13} className="text-primary animate-spin" />}
-              </div>
 
-              {/* Log output */}
-              <div ref={termRef} className="flex-1 p-5 font-mono text-[12.5px] leading-relaxed space-y-1.5 overflow-y-auto bg-surface-container-lowest/30">
-                {logLines.length === 0 && !running && (
-                  <div className="text-on-surface-variant opacity-50 italic">
-                    Configure playbook and click Run to start...
-                  </div>
-                )}
-                {logLines.map((line, i) => (
-                  <div
-                    key={i}
-                    className={
-                      line.includes('Found') || line.includes('INTERRUPTED') ? 'text-error' :
-                      line.includes('complete') || line.includes('ready') ? 'text-success' :
-                      line.includes('Scanning') || line.includes('Loading') ? 'text-primary' :
-                      'text-on-surface-variant'
-                    }
-                  >
-                    {line}
-                  </div>
-                ))}
-                {running && (
-                  <div className="flex items-center gap-1 text-primary">
-                    <span>●</span>
-                    <span className="animate-pulse">Running...</span>
+                {/* Editable code area */}
+                <textarea
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  className="flex-1 p-5 font-mono text-[13px] leading-relaxed bg-surface-container-lowest/30
+                             text-on-surface resize-none outline-none placeholder-on-surface-variant/30"
+                  spellCheck={false}
+                  placeholder="Paste your TypeScript / JavaScript / C++ code here..."
+                />
+              </div>
+            ) : (
+              /* File upload info panel */
+              <div className="glass-card rounded-xl p-8 flex flex-col items-center justify-center text-center" style={{ minHeight: '600px' }}>
+                <Upload size={56} className="text-primary/30 mb-6" />
+                <h3 className="text-lg font-bold text-on-surface mb-3">File Upload Mode</h3>
+                <p className="text-sm text-on-surface-variant max-w-sm leading-relaxed mb-6">
+                  Select a <span className="text-primary font-mono">.ts</span>,{' '}
+                  <span className="text-primary font-mono">.js</span>, or{' '}
+                  <span className="text-primary font-mono">.cpp</span> file from the config panel.
+                  The file is sent as multipart/form-data to the backend for AST parsing and AI review.
+                </p>
+                {selectedFile && (
+                  <div className="glass-card rounded-xl px-6 py-4 text-left w-full max-w-xs">
+                    <p className="text-xs text-on-surface-variant uppercase tracking-wider mb-1">Selected File</p>
+                    <p className="text-sm font-mono font-bold text-primary">{selectedFile.name}</p>
+                    <p className="text-xs text-on-surface-variant mt-1">
+                      {(selectedFile.size / 1024).toFixed(1)} KB
+                    </p>
                   </div>
                 )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
