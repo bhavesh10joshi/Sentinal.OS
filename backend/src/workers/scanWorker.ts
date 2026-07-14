@@ -4,6 +4,7 @@ import prisma from "../Db/Db";
 import { runParser } from "../Functions/RunParser";
 import { GenerateResponse } from "../GeminiAISDK/AIParsing";
 import { CODE_SCAN_QUEUE } from "../Queues/scanQueue";
+import { upsertCodeToVectorStore } from "../Utils/VectorStore";
 
 const scanWorker = new Worker(
     CODE_SCAN_QUEUE , 
@@ -15,6 +16,20 @@ const scanWorker = new Worker(
         try{
 
             const collections = await runParser(codeString);
+
+            const chunksToVectorize = [{
+                id: `${job.data.fileName}#global_scope`,
+                code: job.data.codeString,
+                metadata: {
+                    userId: job.data.userId,
+                    fileName: job.data.fileName,
+                    language: "typescript" 
+                }
+            }];
+
+            // Hand off the data payload to Pinecone asynchronously
+            await upsertCodeToVectorStore(chunksToVectorize);
+
             const Response = await GenerateResponse(collections);
 
             await prisma.scanReport.create({

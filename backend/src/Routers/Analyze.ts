@@ -3,6 +3,7 @@ import { SuccessStatusCodes , ClientErrorStatusCodes , ServerErrors} from '../St
 import multer from 'multer'; 
 import prisma from '../Db/Db';
 import scanQueue from '../Queues/scanQueue';
+import { queryVectorStore } from '../Utils/VectorQuery';
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -202,6 +203,35 @@ AnalyzeRouter.get("/status/:jobId" , async function(req:any , res:any)
         return res.status(500).json({
             success: false,
             error: "Failed to query system telemetry indexes.",
+            details: e instanceof Error ? e.message : e
+        });
+    }
+});
+// Handling semantic code queries over indexed workspaces(vector search using rag)
+AnalyzeRouter.post("/search", async function(req: any, res: any) {
+    const { prompt, userId } = req.body;
+
+    if (!prompt || !userId) {
+        return res.status(400).json({
+            success: false,
+            error: "Parameters 'prompt' and 'userId' are strictly required."
+        });
+    }
+
+    try {
+        //Running our semantic search function to extract the 3 closest matches from the database
+        const searchResults = await queryVectorStore(userId, prompt, 3);
+
+        return res.json({
+            success: true,
+            query: prompt,
+            results: searchResults
+        });
+
+    } catch (e: any) {
+        return res.status(500).json({
+            success: false,
+            error: "Failed to execute semantic codebase query lookup maps.",
             details: e instanceof Error ? e.message : e
         });
     }

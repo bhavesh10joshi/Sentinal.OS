@@ -9,11 +9,23 @@ const Db_1 = __importDefault(require("../Db/Db"));
 const RunParser_1 = require("../Functions/RunParser");
 const AIParsing_1 = require("../GeminiAISDK/AIParsing");
 const scanQueue_1 = require("../Queues/scanQueue");
+const VectorStore_1 = require("../Utils/VectorStore");
 const scanWorker = new bullmq_1.Worker(scanQueue_1.CODE_SCAN_QUEUE, async (job) => {
     const { userId, fileName, codeString } = job.data;
     console.log(`Worker Started working on background job : ${job.id} for file : ${fileName}`);
     try {
         const collections = await (0, RunParser_1.runParser)(codeString);
+        const chunksToVectorize = [{
+                id: `${job.data.fileName}#global_scope`,
+                code: job.data.codeString,
+                metadata: {
+                    userId: job.data.userId,
+                    fileName: job.data.fileName,
+                    language: "typescript"
+                }
+            }];
+        // Hand off the data payload to Pinecone asynchronously
+        await (0, VectorStore_1.upsertCodeToVectorStore)(chunksToVectorize);
         const Response = await (0, AIParsing_1.GenerateResponse)(collections);
         await Db_1.default.scanReport.create({
             data: {
