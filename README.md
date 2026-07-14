@@ -384,25 +384,10 @@ Frontend will start on `http://localhost:5173`
 
 ---
 
-## Screenshots
-
-> Screenshots are auto-generated from the live app. Run locally to explore all views.
-
-**Landing Page** — Glassmorphism hero with live terminal mockup and compliance trust badges
-
-**Central Command Dashboard** — Real-time KPIs, agent fleet status, security overview, and live activity feed
-
-**Playground Workspace** — Code editor with raw/file scan modes, live stream panel with job polling
-
-**Diagnostics** — Accordion scan history with per-function vulnerability cards and AI remediation code
-
-**Semantic Search** — Natural language RAG queries over Pinecone-indexed code
-
----
 
 ## License
 
-MIT — Built by Josh Bartholomew
+MIT — Built by Bhavesh Joshi 
 
 ---
 
