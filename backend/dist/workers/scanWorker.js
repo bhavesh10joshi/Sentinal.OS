@@ -4,12 +4,16 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const bullmq_1 = require("bullmq");
-const redis_1 = __importDefault(require("../Config/redis"));
 const Db_1 = __importDefault(require("../Db/Db"));
 const RunParser_1 = require("../Functions/RunParser");
 const AIParsing_1 = require("../GeminiAISDK/AIParsing");
 const scanQueue_1 = require("../Queues/scanQueue");
 const VectorStore_1 = require("../Utils/VectorStore");
+const workerConnection = {
+    host: '127.0.0.1',
+    port: 6379,
+    maxRetriesPerRequest: null
+};
 const scanWorker = new bullmq_1.Worker(scanQueue_1.CODE_SCAN_QUEUE, async (job) => {
     const { userId, fileName, codeString } = job.data;
     console.log(`Worker Started working on background job : ${job.id} for file : ${fileName}`);
@@ -61,6 +65,6 @@ const scanWorker = new bullmq_1.Worker(scanQueue_1.CODE_SCAN_QUEUE, async (job) 
         });
         throw e;
     }
-}, { connection: redis_1.default });
+}, { connection: workerConnection });
 exports.default = scanWorker;
 //# sourceMappingURL=scanWorker.js.map

@@ -1,1 +1,1 @@
-{"version":3,"file":"scanWorker.d.ts","sourceRoot":"","sources":["../../src/workers/scanWorker.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAQ,MAAM,QAAQ,CAAC;AAQtC,QAAA,MAAM,UAAU,0BAgEf,CAAC;eAEa,UAAU"}
+{"version":3,"file":"scanWorker.d.ts","sourceRoot":"","sources":["../../src/workers/scanWorker.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,MAAM,EAAQ,MAAM,QAAQ,CAAC;AActC,QAAA,MAAM,UAAU,0BAgEf,CAAC;eAEa,UAAU"}

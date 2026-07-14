@@ -6,6 +6,12 @@ import { GenerateResponse } from "../GeminiAISDK/AIParsing";
 import { CODE_SCAN_QUEUE } from "../Queues/scanQueue";
 import { upsertCodeToVectorStore } from "../Utils/VectorStore";
 
+const workerConnection = {
+  host: '127.0.0.1',
+  port: 6379,
+  maxRetriesPerRequest: null 
+};
+
 const scanWorker = new Worker(
     CODE_SCAN_QUEUE , 
     async(job : Job) => {
@@ -69,7 +75,7 @@ const scanWorker = new Worker(
             throw e;
         }
     },
-    {connection : redisConnectionOptions}
+    {connection : workerConnection}
 );
 
 export default scanWorker
