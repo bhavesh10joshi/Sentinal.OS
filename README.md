@@ -194,7 +194,7 @@ Sentinal.OS/
 
 ---
 
-## Deployment (Vercel)
+## Deployment (Vercel) In progress
 
 ### Prerequisites
 
@@ -210,7 +210,6 @@ Sentinal.OS/
 3. Add environment variables:
 
 ```env
-GOOGLE_SDK_API_CREDENTIALS=your_google_ai_key
 GEMINI_API_KEY=your_google_ai_key
 DATABASE_URL=mongodb+srv://user:pass@cluster.mongodb.net/SentinalOS
 REDIS_URL=rediss://default:pass@your-upstash-host:port
@@ -304,4 +303,4 @@ MIT — Built by Bhavesh Joshi
 
 ---
 
-*Sentinel.OS was built out of a real need — not as a demo. Every component is wired to a real backend, processes real code, and returns real AI-generated security insights.*
+*Sentinel.OS is a working prototype — every route, queue, and integration listed above is implemented and running. It's a starting point, not a finished product, and the sections above describe both what it does and where it currently falls short.*

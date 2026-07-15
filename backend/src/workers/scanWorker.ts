@@ -1,4 +1,4 @@
-import { Worker , Job } from "bullmq";
+import { Worker, Job } from "bullmq";
 import { GoogleGenAI } from "@google/genai";
 import prisma from "../Db/Db";
 import { runParser } from "../Functions/RunParser";
@@ -18,22 +18,22 @@ console.log("Checking keys inside execution thread:", {
 });
 
 const workerConnection = {
-  host: '127.0.0.1',
-  port: 6379,
-  maxRetriesPerRequest: null 
+    host: '127.0.0.1',
+    port: 6379,
+    maxRetriesPerRequest: null
 };
 
 // Explicitly instantiate the Google SDK using the authenticated API key config string
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 const scanWorker = new Worker(
-    CODE_SCAN_QUEUE , 
-    async(job : Job) => {
-        const { userId , fileName , codeString} = job.data;
+    CODE_SCAN_QUEUE,
+    async (job: Job) => {
+        const { userId, fileName, codeString } = job.data;
 
         console.log(`Worker Started working on background job : ${job.id} for file : ${fileName}`);
-    
-        try{
+
+        try {
             if (!job.data || !job.data.codeString) {
                 throw new Error("Invalid payload: codeString is empty or undefined.");
             }
@@ -46,7 +46,7 @@ const scanWorker = new Worker(
                 metadata: {
                     userId: job.data.userId,
                     fileName: job.data.fileName,
-                    language: "typescript" 
+                    language: "typescript"
                 }
             }];
 
@@ -57,42 +57,41 @@ const scanWorker = new Worker(
 
             await prisma.scanReport.create({
                 data: {
-                userId: userId,
-                fileName: fileName,
-                totalBlocksScanned: collections.length,
-                success: true,
-                findings: {
-                    create: Response.map((item: any) => ({
-                    functionName: item.functionname || item.functionName,
-                    startLine: item.startLine,
-                    endLine: item.endLine,
-                    vulnerabilityFound: item.analysis.vulnerabilityFound,
-                    severity: item.analysis.severity,
-                    issueSummary: item.analysis.issueSummary,
-                    remediationCode: item.analysis.remediationCode
-                    }))
-                }
+                    userId: userId,
+                    fileName: fileName,
+                    totalBlocksScanned: collections.length,
+                    success: true,
+                    findings: {
+                        create: Response.map((item: any) => ({
+                            functionName: item.functionname || item.functionName,
+                            startLine: item.startLine,
+                            endLine: item.endLine,
+                            vulnerabilityFound: item.analysis.vulnerabilityFound,
+                            severity: item.analysis.severity,
+                            issueSummary: item.analysis.issueSummary,
+                            remediationCode: item.analysis.remediationCode
+                        }))
+                    }
                 }
             });
 
             console.log(`[Worker] Job ${job.id} finalized and committed to database successfully.`);
             return { success: true };
         }
-        catch(e)
-        {
+        catch (e) {
             console.error(`Worker Encountered Error , for job : ${job.id} error : `, e);
             await prisma.scanReport.create({
                 data: {
-                userId: userId,
-                fileName: fileName,
-                totalBlocksScanned: 0,
-                success: false
+                    userId: userId,
+                    fileName: fileName,
+                    totalBlocksScanned: 0,
+                    success: false
                 }
             });
             throw e;
         }
     },
-    {connection : workerConnection}
+    { connection: workerConnection }
 );
 
 export default scanWorker
