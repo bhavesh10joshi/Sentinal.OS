@@ -29,6 +29,9 @@ export function StreamPanel() {
   const [jobStatus, setJobStatus] = useState<string>('WAITING')
   const [progress, setProgress] = useState<number>(0)
   const [findings, setFindings] = useState<any[]>([])
+  
+  // 🧠 Track the last processed status locally to prevent duplicate log updates during polls
+  const [lastLoggedStatus, setLastLoggedStatus] = useState<string>('')
 
   // GSAP slide animation
   useEffect(() => {
@@ -45,6 +48,7 @@ export function StreamPanel() {
     if (!open || !jobId) return
     setLogLines([])
     setJobStatus('WAITING')
+    setLastLoggedStatus('WAITING') // Reset logging tracking lock
     setProgress(0)
     setFindings([])
     setLogLines([
@@ -53,7 +57,7 @@ export function StreamPanel() {
     ])
   }, [open, jobId])
 
-  // Poll job status every 2 seconds until COMPLETED or FAILED
+  // Poll job status every 2.5 seconds until COMPLETED or FAILED
   useEffect(() => {
     if (!open || !jobId) return
 
@@ -63,15 +67,24 @@ export function StreamPanel() {
           `${VITE_BACKEND_URL}/SentinalOS/api/Analyze/status/${jobId}`
         )
 
-        setJobStatus(data.status)
+        const currentStatus = data.status
+        setJobStatus(currentStatus)
         setProgress(data.progress ?? 0)
 
-        if (data.status === 'ACTIVE') {
-          setLogLines((prev) => [...prev, { text: '[AGENT] Tree-Sitter AST parser running...', type: 'info' }])
-          setLogLines((prev) => [...prev, { text: '[AGENT] Sending blocks to Gemini AI for analysis...', type: 'agent' }])
+        // 🧠 Only push transition logs if the worker shifted into a brand new processing stage
+        if (currentStatus !== lastLoggedStatus) {
+          setLastLoggedStatus(currentStatus)
+
+          if (currentStatus === 'ACTIVE') {
+            setLogLines((prev) => [
+              ...prev, 
+              { text: '[AGENT] Tree-Sitter AST parser running...', type: 'info' },
+              { text: '[AGENT] Sending blocks to Gemini AI for analysis...', type: 'agent' }
+            ])
+          }
         }
 
-        if (data.status === 'COMPLETED' && data.result) {
+        if (currentStatus === 'COMPLETED' && data.result) {
           const vulns = data.result?.findings ?? []
           setFindings(vulns)
           setLogLines((prev) => [
@@ -86,19 +99,20 @@ export function StreamPanel() {
               ])
             }
           })
-          return true // stop polling
+          return true // stop polling immediately
         }
 
-        if (data.status === 'FAILED') {
+        if (currentStatus === 'FAILED') {
           setLogLines((prev) => [
             ...prev,
             { text: `[FAILED] ${data.reason ?? 'Worker pipeline crashed unexpectedly.'}`, type: 'error' },
           ])
-          return true // stop polling
+          return true // stop polling immediately
         }
 
       } catch (err) {
-        setLogLines((prev) => [...prev, { text: '[WARN] Status endpoint unreachable — retrying...', type: 'warn' }])
+        // Prevent writing infinite layout line logs on temporary infrastructure errors
+        console.warn('⚠️ Status polling connection interrupted. Re-trying pipeline stream...');
       }
       return false
     }
@@ -117,7 +131,7 @@ export function StreamPanel() {
 
     start()
     return () => clearInterval(pollInterval)
-  }, [open, jobId])
+  }, [open, jobId, lastLoggedStatus]) // Added dependency tracking metrics safely
 
   // Auto-scroll terminal to bottom
   useEffect(() => {

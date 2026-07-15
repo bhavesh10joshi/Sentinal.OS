@@ -3,11 +3,21 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.apiLimiter = void 0;
 const express_1 = require("express");
 const scanQueue_1 = __importDefault(require("../Queues/scanQueue"));
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const WebhookRouter = (0, express_1.Router)();
+//Keep this strictly for heavy actions (file uploads, raw pastes, git pushes)
+exports.apiLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 15 * 60 * 1000,
+    limit: 50, // Strict ceiling for running heavy AI scans
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { success: false, error: "Too many scan execution requests. Try again in 15 minutes." }
+});
 // Catch inbound webhook payload trigger payloads from platforms like GitHub
-WebhookRouter.post("/github", async function (req, res) {
+WebhookRouter.post("/github", exports.apiLimiter, async function (req, res) {
     // Verify this is a valid push event from GitHub, otherwise skip it
     const eventType = req.headers["x-github-event"];
     if (eventType !== "push") {

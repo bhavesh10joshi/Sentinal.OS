@@ -7,18 +7,14 @@ exports.GenerateResponse = GenerateResponse;
 const generative_ai_1 = require("@google/generative-ai");
 const path_1 = __importDefault(require("path"));
 const dotenv_1 = __importDefault(require("dotenv"));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const envPath = path_1.default.resolve(process.cwd(), ".env");
 dotenv_1.default.config({ path: envPath });
 async function GenerateResponse(Collections) {
     const ResponseArray = [];
-    if (!process.env.GOOGLE_SDK_API_CREDENTIALS) {
-        throw new Error("API key is not Present , Check and try again later ...");
-    }
-    const genAI = new generative_ai_1.GoogleGenerativeAI(process.env.GOOGLE_SDK_API_CREDENTIALS);
-    // Using gemini-2.5-flash for rapid, highly reliable structured JSON outputs
+    const genAI = new generative_ai_1.GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
         model: "gemini-3.5-flash",
-        //forcing the model level configuration to output strict JSON
         generationConfig: {
             responseMimeType: "application/json"
         }
@@ -26,7 +22,6 @@ async function GenerateResponse(Collections) {
     console.log("\n Sending code blocks to Sentinel.OS AI Core for review...");
     for (const block of Collections) {
         console.log(`\n Reviewing function [${block.name}] (Lines ${block.startLine}-${block.endLine})...`);
-        // Refined prompt explicitly describing the JSON keys expected
         const systemPrompt = `
             You are a Senior Systems Security Architect reviewing code for production.
             Analyze the following code snippet isolated from a file. 
@@ -45,29 +40,46 @@ async function GenerateResponse(Collections) {
                 "remediationCode": "The exact corrected code snippet string, or an empty string if clean."
             }
         `;
-        try {
-            const response = await model.generateContent(systemPrompt);
-            console.log(`📝 AI Structured Review for ${block.name}:`);
-            if (response && response.response) {
-                const rawJsonText = response.response.text();
-                // Parse it to prove it's valid JSON
-                const jsonOutput = JSON.parse(rawJsonText);
-                ResponseArray.push({
-                    functionname: block.name,
-                    startLine: block.startLine,
-                    endLine: block.endLine,
-                    analysis: jsonOutput
-                });
+        // Manage block-level independent retry state limits safely
+        let attemptsLeft = 3;
+        let successfulScan = false;
+        while (attemptsLeft > 0 && !successfulScan) {
+            try {
+                const response = await model.generateContent(systemPrompt);
+                console.log(`📝 AI Structured Review for ${block.name}:`);
+                if (response && response.response) {
+                    const rawJsonText = response.response.text();
+                    const jsonOutput = JSON.parse(rawJsonText);
+                    ResponseArray.push({
+                        functionname: block.name,
+                        startLine: block.startLine,
+                        endLine: block.endLine,
+                        analysis: jsonOutput
+                    });
+                    successfulScan = true; // Break the current block retry loop
+                }
+                else {
+                    console.log("No response text found.");
+                    attemptsLeft--;
+                }
+                console.log("------------------------------------------------");
             }
-            else {
-                console.log("No response text found.");
+            catch (error) {
+                //Intercept Google Free Tier Quota limits safely inside the block loop
+                if (error.status === 429 || error.message?.includes('429')) {
+                    attemptsLeft--;
+                    const delaySeconds = error.errorDetails?.find((d) => d.retryDelay)?.retryDelay
+                        ? parseInt(error.errorDetails.find((d) => d.retryDelay).retryDelay)
+                        : 8;
+                    console.warn(`Hit free tier rate limit. Backing off for ${delaySeconds}s before retrying... (${attemptsLeft} retries left)`);
+                    await sleep(delaySeconds * 1000 + 500);
+                    continue; // Re-fire the while loop for this exact block
+                }
+                // Hard error fallback for unresolvable exceptions (like bad syntax parsing syntax)
+                console.log(`Error encountered while analyzing ${block.name}:`);
+                console.error(error);
+                break; // Break the block retry sequence to keep the broader collection iterating
             }
-            console.log("------------------------------------------------");
-        }
-        catch (e) {
-            console.log(` Error encountered while analyzing ${block.name}:`);
-            console.log(e);
-            continue; // Keep tracking downstream elements regardless of independent failures
         }
     }
     return ResponseArray;

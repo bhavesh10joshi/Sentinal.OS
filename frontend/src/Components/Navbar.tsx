@@ -1,5 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { SentinelIcon } from '../Ui/Icons/SentinelIcon'
+import { ThemeToggle } from './ThemeToggle'
 
 // Top glass navigation bar — fixed, full width
 export function Navbar() {
@@ -49,6 +50,7 @@ export function Navbar() {
 
         {/* CTA buttons */}
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <button
             onClick={() => navigate('/Sentinel/Login')}
             className="text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors"

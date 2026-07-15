@@ -1,16 +1,30 @@
 import { Worker , Job } from "bullmq";
-import redisConnectionOptions from "../Config/redis";
+import { GoogleGenAI } from "@google/genai";
 import prisma from "../Db/Db";
 import { runParser } from "../Functions/RunParser";
 import { GenerateResponse } from "../GeminiAISDK/AIParsing";
 import { CODE_SCAN_QUEUE } from "../Queues/scanQueue";
 import { upsertCodeToVectorStore } from "../Utils/VectorStore";
+import path from "path";
+import dotenv from "dotenv"
+
+const envPath = path.resolve(process.cwd(), ".env");
+dotenv.config({ path: envPath });
+
+// error checking : are keys still prresent or not
+console.log("Checking keys inside execution thread:", {
+    hasGeminiKey: !!process.env.GEMINI_API_KEY,
+    hasPineconeKey: !!process.env.PINECONE_API_KEY
+});
 
 const workerConnection = {
   host: '127.0.0.1',
   port: 6379,
   maxRetriesPerRequest: null 
 };
+
+// Explicitly instantiate the Google SDK using the authenticated API key config string
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
 const scanWorker = new Worker(
     CODE_SCAN_QUEUE , 
@@ -20,6 +34,9 @@ const scanWorker = new Worker(
         console.log(`Worker Started working on background job : ${job.id} for file : ${fileName}`);
     
         try{
+            if (!job.data || !job.data.codeString) {
+                throw new Error("Invalid payload: codeString is empty or undefined.");
+            }
 
             const collections = await runParser(codeString);
 

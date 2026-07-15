@@ -10,8 +10,10 @@ const path_1 = __importDefault(require("path"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const envPath = path_1.default.resolve(process.cwd(), ".env");
 dotenv_1.default.config({ path: envPath });
-// Initialize the Google AI SDK using your existing API key
-const ai = new genai_1.GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+const apiKey = process.env.GEMINI_API_KEY;
+// 🔍 DIAGNOSTIC LOG: Confirm whether the key exists inside the file scope on startup
+console.log("Scope Check -> Key Present:", !!apiKey);
+const ai = new genai_1.GoogleGenAI({ apiKey: apiKey || "" });
 // Initialize the Pinecone Client
 const pc = new pinecone_1.Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 const index = pc.index(process.env.PINECONE_INDEX_NAME || 'sentinel-os');
@@ -20,8 +22,11 @@ async function upsertCodeToVectorStore(chunks) {
         for (const chunk of chunks) {
             // Generate a high-dimensional embedding vector using Google's native text embedding engine
             const response = await ai.models.embedContent({
-                model: 'text-embedding-004', // Google's standard 768-dimension embedding model
+                model: 'models/gemini-embedding-001', // Google's standard 768-dimension embedding model
                 contents: chunk.code,
+                config: {
+                    outputDimensionality: 768 //Forces Gemini to export a 768-dimension vector
+                }
             });
             // Access the first element of the 'embeddings' array returned by the modern Google SDK
             const embeddingVector = response.embeddings?.[0]?.values;

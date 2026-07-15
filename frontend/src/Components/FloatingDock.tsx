@@ -6,14 +6,13 @@ import {
   Search,
   FlaskConical,
   BarChart3,
-  Shield,
-  Gavel,
   Inbox,
   LogOut,
   User,
 } from 'lucide-react'
 import { SentinelIcon } from '../Ui/Icons/SentinelIcon'
 import { useAuthStore } from '../Store/useAuthStore'
+import { ThemeToggle } from './ThemeToggle'
 
 interface NavItem {
   icon: React.ReactNode
@@ -31,14 +30,12 @@ export function FloatingDock() {
 
   const navItems: NavItem[] = [
     { icon: <LayoutDashboard size={20} />, label: 'Dashboard', route: '/Sentinel/Dashboard' },
-    { icon: <Inbox size={20} />, label: 'Ingestion', route: '/Sentinel/Ingestion' },
-    { icon: <Shield size={20} />, label: 'Diagnostics', route: '/Sentinel/Diagnostics' },
-    { icon: <GitBranch size={20} />, label: 'GitHub', route: '/Sentinel/GitHub' },
-    { icon: <Search size={20} />, label: 'Search', route: '/Sentinel/Search' },
-    { icon: <FlaskConical size={20} />, label: 'Playground', route: '/Sentinel/Playground' },
-    { icon: <BarChart3 size={20} />, label: 'Analytics', route: '/Sentinel/Analytics' },
-    { icon: <Gavel size={20} />, label: 'Legal', route: '/Sentinel/Legal' },
-    { icon: <Terminal size={20} />, label: 'Terminal', route: '/Sentinel/Playground' },
+    { icon: <Inbox size={20} />,           label: 'Ingestion',  route: '/Sentinel/Ingestion' },
+    { icon: <Terminal size={20} />,        label: 'Diagnostics',route: '/Sentinel/Diagnostics' },
+    { icon: <GitBranch size={20} />,       label: 'GitHub',     route: '/Sentinel/GitHub' },
+    { icon: <Search size={20} />,          label: 'Search',     route: '/Sentinel/Search' },
+    { icon: <FlaskConical size={20} />,    label: 'Playground', route: '/Sentinel/Playground' },
+    { icon: <BarChart3 size={20} />,       label: 'Analytics',  route: '/Sentinel/Analytics' },
   ]
 
   const handleLogout = () => {
@@ -107,6 +104,8 @@ export function FloatingDock() {
       })}
 
       <div className="w-8 h-px bg-outline-variant/40 my-1" />
+
+      <ThemeToggle />
 
       {/* Logout / clear identity */}
       <button

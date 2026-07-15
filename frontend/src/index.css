@@ -3,6 +3,136 @@
 @tailwind utilities;
 
 /* -----------------------------------------------
+   Light mode — CSS design tokens (default)
+----------------------------------------------- */
+:root {
+  --color-primary:                  #0059b5;
+  --color-primary-container:        #0071e3;
+  --color-on-primary:               #ffffff;
+  --color-on-primary-container:     #fcfbff;
+  --color-primary-fixed:            #d7e2ff;
+  --color-primary-fixed-dim:        #abc7ff;
+  --color-on-primary-fixed:         #001b3f;
+  --color-on-primary-fixed-variant: #00458f;
+
+  --color-secondary:                #5f5e60;
+  --color-secondary-container:      #e2dfe1;
+  --color-on-secondary:             #ffffff;
+  --color-on-secondary-container:   #636264;
+
+  --color-tertiary:                 #5a5b5d;
+  --color-tertiary-container:       #727476;
+  --color-on-tertiary:              #ffffff;
+  --color-on-tertiary-container:    #fbfbfd;
+
+  --color-surface:                  #faf8fe;
+  --color-surface-dim:              #dad9df;
+  --color-surface-bright:           #faf8fe;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low:    #f4f3f8;
+  --color-surface-container:        #eeedf3;
+  --color-surface-container-high:   #e9e7ed;
+  --color-surface-container-highest:#e3e2e7;
+  --color-surface-variant:          #e3e2e7;
+  --color-surface-tint:             #005cbb;
+
+  --color-on-surface:               #1a1b1f;
+  --color-on-surface-variant:       #414753;
+  --color-on-background:            #1a1b1f;
+  --color-background:               #faf8fe;
+
+  --color-outline:                  #717785;
+  --color-outline-variant:          #c1c6d6;
+
+  --color-inverse-surface:          #2f3034;
+  --color-inverse-on-surface:       #f1f0f5;
+  --color-inverse-primary:          #abc7ff;
+
+  --color-error:                    #ba1a1a;
+  --color-error-container:          #ffdad6;
+  --color-on-error:                 #ffffff;
+  --color-on-error-container:       #93000a;
+
+  --color-success:                  #1a7f45;
+  --color-success-container:        #d4f5e0;
+  --color-warning:                  #9b6100;
+  --color-warning-container:        #ffe7b3;
+
+  /* Glass surfaces */
+  --glass-bg:         rgba(255, 255, 255, 0.70);
+  --glass-panel-bg:   rgba(255, 255, 255, 0.80);
+  --glass-dock-bg:    rgba(255, 255, 255, 0.85);
+  --glass-border:     rgba(255, 255, 255, 0.40);
+  --glass-panel-border: rgba(255, 255, 255, 0.50);
+  --glass-dock-border:  rgba(255, 255, 255, 0.60);
+}
+
+/* -----------------------------------------------
+   Dark mode — CSS design tokens (class="dark" on <html>)
+----------------------------------------------- */
+.dark {
+  --color-primary:                  #abc7ff;
+  --color-primary-container:        #2d5fa6;
+  --color-on-primary:               #002e6a;
+  --color-on-primary-container:     #d7e2ff;
+  --color-primary-fixed:            #001b3f;
+  --color-primary-fixed-dim:        #003580;
+  --color-on-primary-fixed:         #d7e2ff;
+  --color-on-primary-fixed-variant: #abc7ff;
+
+  --color-secondary:                #c6c5c7;
+  --color-secondary-container:      #474649;
+  --color-on-secondary:             #313133;
+  --color-on-secondary-container:   #e2dfe1;
+
+  --color-tertiary:                 #c5c6c8;
+  --color-tertiary-container:       #454749;
+  --color-on-tertiary:              #2f3133;
+  --color-on-tertiary-container:    #e1e2e4;
+
+  --color-surface:                  #121316;
+  --color-surface-dim:              #121316;
+  --color-surface-bright:           #383a3f;
+  --color-surface-container-lowest: #0d0e11;
+  --color-surface-container-low:    #1a1b1f;
+  --color-surface-container:        #1e2024;
+  --color-surface-container-high:   #292a2e;
+  --color-surface-container-highest:#333539;
+  --color-surface-variant:          #414753;
+  --color-surface-tint:             #abc7ff;
+
+  --color-on-surface:               #e3e2e7;
+  --color-on-surface-variant:       #c1c6d6;
+  --color-on-background:            #e3e2e7;
+  --color-background:               #121316;
+
+  --color-outline:                  #8b9099;
+  --color-outline-variant:          #414753;
+
+  --color-inverse-surface:          #e3e2e7;
+  --color-inverse-on-surface:       #2f3034;
+  --color-inverse-primary:          #0059b5;
+
+  --color-error:                    #ffb4ab;
+  --color-error-container:          #93000a;
+  --color-on-error:                 #690005;
+  --color-on-error-container:       #ffdad6;
+
+  --color-success:                  #6cd9a0;
+  --color-success-container:        #0a4a28;
+  --color-warning:                  #ffb851;
+  --color-warning-container:        #4f3100;
+
+  /* Glass surfaces — dark mode */
+  --glass-bg:         rgba(30, 32, 36, 0.80);
+  --glass-panel-bg:   rgba(26, 27, 31, 0.90);
+  --glass-dock-bg:    rgba(20, 22, 26, 0.92);
+  --glass-border:     rgba(255, 255, 255, 0.07);
+  --glass-panel-border: rgba(255, 255, 255, 0.09);
+  --glass-dock-border:  rgba(255, 255, 255, 0.10);
+}
+
+/* -----------------------------------------------
    Global reset & scrollbar suppression
 ----------------------------------------------- */
 *::-webkit-scrollbar { display: none; }
@@ -14,37 +144,38 @@ body::-webkit-scrollbar { display: none; }
 ----------------------------------------------- */
 body {
   font-family: 'Inter', sans-serif;
-  background-color: #faf8fe;
-  color: #1a1b1f;
+  background-color: var(--color-background);
+  color: var(--color-on-surface);
   -ms-overflow-style: none;
   scrollbar-width: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* -----------------------------------------------
    Glassmorphism card utility
 ----------------------------------------------- */
 .glass-card {
-  background: rgba(255, 255, 255, 0.70);
+  background: var(--glass-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.40);
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .glass-panel {
-  background: rgba(255, 255, 255, 0.80);
+  background: var(--glass-panel-bg);
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
-  border: 1px solid rgba(255, 255, 255, 0.50);
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--glass-panel-border);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.10);
 }
 
 .glass-dock {
-  background: rgba(255, 255, 255, 0.85);
+  background: var(--glass-dock-bg);
   backdrop-filter: blur(40px);
   -webkit-backdrop-filter: blur(40px);
-  border: 1px solid rgba(255, 255, 255, 0.60);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--glass-dock-border);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
 /* -----------------------------------------------
@@ -95,7 +226,7 @@ body {
   display: inline-block;
   width: 8px;
   height: 18px;
-  background-color: #0071e3;
+  background-color: var(--color-primary);
   animation: blink 1s step-end infinite;
   vertical-align: text-bottom;
 }
@@ -117,7 +248,7 @@ body {
 }
 .card-hover:hover {
   transform: scale(1.015) translateY(-2px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.07);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.10);
 }
 
 /* -----------------------------------------------
@@ -155,4 +286,12 @@ code, pre, .font-mono {
 ::selection {
   background-color: #d7e2ff;
   color: #001b3f;
+}
+
+/* -----------------------------------------------
+   Dark mode selection
+----------------------------------------------- */
+.dark ::selection {
+  background-color: #001b3f;
+  color: #d7e2ff;
 }

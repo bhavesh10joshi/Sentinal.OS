@@ -4,6 +4,7 @@ import multer from 'multer';
 import prisma from '../Db/Db';
 import scanQueue from '../Queues/scanQueue';
 import { queryVectorStore } from '../Utils/VectorQuery';
+import rateLimit from 'express-rate-limit';
 
 const storage = multer.memoryStorage();
 const upload = multer({
@@ -12,7 +13,30 @@ const upload = multer({
 
 const AnalyzeRouter = Router();
 
-AnalyzeRouter.post("/raw" , async function(req:any , res:any)
+//Keep this strictly for heavy actions (file uploads, raw pastes, git pushes)
+export const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    limit: 50, // Strict ceiling for running heavy AI scans
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    skip: (req) => {
+        const ip = req.ip || req.socket.remoteAddress;
+        return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+    },
+    message: { success: false, error: "Too many scan execution requests. Try again in 15 minutes." }
+});
+
+//Relaxed rate-limiting specific to the status endpoint
+export const statusPollingLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000, // 1 minute window
+    limit: 300, // High capacity threshold to allow constant UI polling
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { success: false, error: "Polling threshold exceeded." }
+});
+
+
+AnalyzeRouter.post("/raw" , apiLimiter , async function(req:any , res:any)
 {
     const RawCode:string = req.body.RawCode;
     const userId:string = req.body.userId || "anonymous_default_user";
@@ -51,7 +75,7 @@ AnalyzeRouter.post("/raw" , async function(req:any , res:any)
     }
 });
 // We will search for codeFile(By this name the sender will atach his/her file)
-AnalyzeRouter.post("/file" , upload.single("codeFile") , async function(req:any , res:any)
+AnalyzeRouter.post("/file" , upload.single("codeFile") , apiLimiter , async function(req:any , res:any)
 {
     const userId : string = req.body.userId || "anonymous_default_user";
 
@@ -72,7 +96,8 @@ AnalyzeRouter.post("/file" , upload.single("codeFile") , async function(req:any 
         const job = await scanQueue.add("processFileCode" , {
             userId : userId , 
             fileName : req.file.originalname , 
-            codeString : FileContent
+            codeString : FileContent,
+            geminiFallbackKey: process.env.GEMINI_API_KEY
         });
 
         res.status(SuccessStatusCodes.Success).json({
@@ -97,7 +122,7 @@ AnalyzeRouter.post("/file" , upload.single("codeFile") , async function(req:any 
 //Api request for getting the full history of the userId and there scans 
 AnalyzeRouter.get("/history" , async function(req:any , res:any)
 {
-    const userId:string = req.body.userId;
+    const userId:string = req.query.userId as string;
     
     if(!userId)
     {
@@ -139,7 +164,7 @@ AnalyzeRouter.get("/history" , async function(req:any , res:any)
     }
 });
 // Api endpoint to Know whether the job is completed or still executing in the background 
-AnalyzeRouter.get("/status/:jobId" , async function(req:any , res:any)
+AnalyzeRouter.get("/status/:jobId" , statusPollingLimiter , async function(req:any , res:any)
 {
     const { jobId } = req.params;
     
@@ -168,7 +193,7 @@ AnalyzeRouter.get("/status/:jobId" , async function(req:any , res:any)
         const jobState = await job.getState();
 
         // getting any value that is returned by the background working thread
-        const jobResult = job.returnvalue();
+        const jobResult = job.returnvalue;
 
         // Job finished processing cleanly
         if (jobState === "completed") {

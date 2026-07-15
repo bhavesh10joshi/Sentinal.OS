@@ -11,8 +11,8 @@ import { GitHubHub } from './Pages/GitHubHub'
 import { SemanticSearch } from './Pages/SemanticSearch'
 import { Playground } from './Pages/Playground'
 import { Analytics } from './Pages/Analytics'
-import { LegalConsole } from './Pages/LegalConsole'
 import { useAuthStore } from './Store/useAuthStore'
+// LegalConsole removed — no backend data source, page served no purpose
 
 // Guard wrapper — redirects to login if workspace identity is not set
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -50,7 +50,6 @@ function App() {
         <Route path="/Sentinel/Search"      element={<ProtectedRoute><SemanticSearch /></ProtectedRoute>} />
         <Route path="/Sentinel/Playground"  element={<ProtectedRoute><Playground /></ProtectedRoute>} />
         <Route path="/Sentinel/Analytics"   element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-        <Route path="/Sentinel/Legal"       element={<ProtectedRoute><LegalConsole /></ProtectedRoute>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/" replace />} />

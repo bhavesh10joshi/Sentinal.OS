@@ -3,18 +3,40 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.statusPollingLimiter = exports.apiLimiter = void 0;
 const express_1 = require("express");
 const StatusCodes_1 = require("../StatusCodes/StatusCodes");
 const multer_1 = __importDefault(require("multer"));
 const Db_1 = __importDefault(require("../Db/Db"));
 const scanQueue_1 = __importDefault(require("../Queues/scanQueue"));
 const VectorQuery_1 = require("../Utils/VectorQuery");
+const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const storage = multer_1.default.memoryStorage();
 const upload = (0, multer_1.default)({
     storage: storage
 });
 const AnalyzeRouter = (0, express_1.Router)();
-AnalyzeRouter.post("/raw", async function (req, res) {
+//Keep this strictly for heavy actions (file uploads, raw pastes, git pushes)
+exports.apiLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 15 * 60 * 1000,
+    limit: 50, // Strict ceiling for running heavy AI scans
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    skip: (req) => {
+        const ip = req.ip || req.socket.remoteAddress;
+        return ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+    },
+    message: { success: false, error: "Too many scan execution requests. Try again in 15 minutes." }
+});
+//Relaxed rate-limiting specific to the status endpoint
+exports.statusPollingLimiter = (0, express_rate_limit_1.default)({
+    windowMs: 1 * 60 * 1000, // 1 minute window
+    limit: 300, // High capacity threshold to allow constant UI polling
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { success: false, error: "Polling threshold exceeded." }
+});
+AnalyzeRouter.post("/raw", exports.apiLimiter, async function (req, res) {
     const RawCode = req.body.RawCode;
     const userId = req.body.userId || "anonymous_default_user";
     if (!RawCode) {
@@ -47,7 +69,7 @@ AnalyzeRouter.post("/raw", async function (req, res) {
     }
 });
 // We will search for codeFile(By this name the sender will atach his/her file)
-AnalyzeRouter.post("/file", upload.single("codeFile"), async function (req, res) {
+AnalyzeRouter.post("/file", upload.single("codeFile"), exports.apiLimiter, async function (req, res) {
     const userId = req.body.userId || "anonymous_default_user";
     try {
         if (!req.file) {
@@ -63,7 +85,8 @@ AnalyzeRouter.post("/file", upload.single("codeFile"), async function (req, res)
         const job = await scanQueue_1.default.add("processFileCode", {
             userId: userId,
             fileName: req.file.originalname,
-            codeString: FileContent
+            codeString: FileContent,
+            geminiFallbackKey: process.env.GEMINI_API_KEY
         });
         res.status(StatusCodes_1.SuccessStatusCodes.Success).json({
             success: true,
@@ -84,7 +107,7 @@ AnalyzeRouter.post("/file", upload.single("codeFile"), async function (req, res)
 });
 //Api request for getting the full history of the userId and there scans 
 AnalyzeRouter.get("/history", async function (req, res) {
-    const userId = req.body.userId;
+    const userId = req.query.userId;
     if (!userId) {
         res.status(StatusCodes_1.ClientErrorStatusCodes.BadRequest).json({
             success: false,
@@ -121,7 +144,7 @@ AnalyzeRouter.get("/history", async function (req, res) {
     }
 });
 // Api endpoint to Know whether the job is completed or still executing in the background 
-AnalyzeRouter.get("/status/:jobId", async function (req, res) {
+AnalyzeRouter.get("/status/:jobId", exports.statusPollingLimiter, async function (req, res) {
     const { jobId } = req.params;
     if (!jobId) {
         res.status(StatusCodes_1.ClientErrorStatusCodes.BadRequest).json({
@@ -143,7 +166,7 @@ AnalyzeRouter.get("/status/:jobId", async function (req, res) {
         // This is the job state , tells us what is the state of the job in the queue . States : ("active" | "completed" | "failed" | "waiting" | "delayed")
         const jobState = await job.getState();
         // getting any value that is returned by the background working thread
-        const jobResult = job.returnvalue();
+        const jobResult = job.returnvalue;
         // Job finished processing cleanly
         if (jobState === "completed") {
             return res.json({

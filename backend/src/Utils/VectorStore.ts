@@ -6,8 +6,13 @@ import dotenv from 'dotenv';
 const envPath = path.resolve(process.cwd(), ".env");
 dotenv.config({ path: envPath });
 
-// Initialize the Google AI SDK using your existing API key
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string});
+
+const apiKey = process.env.GEMINI_API_KEY;
+
+// 🔍 DIAGNOSTIC LOG: Confirm whether the key exists inside the file scope on startup
+console.log("Scope Check -> Key Present:", !!apiKey);
+
+const ai = new GoogleGenAI({ apiKey: apiKey || "" });
 
 // Initialize the Pinecone Client
 const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
@@ -28,8 +33,11 @@ export async function upsertCodeToVectorStore(chunks: CodeChunk[]) {
         for (const chunk of chunks) {
             // Generate a high-dimensional embedding vector using Google's native text embedding engine
             const response = await ai.models.embedContent({
-                model: 'text-embedding-004', // Google's standard 768-dimension embedding model
+                model: 'models/gemini-embedding-001', // Google's standard 768-dimension embedding model
                 contents: chunk.code,
+                config: {
+                    outputDimensionality: 768 //Forces Gemini to export a 768-dimension vector
+                }
             });
 
             // Access the first element of the 'embeddings' array returned by the modern Google SDK

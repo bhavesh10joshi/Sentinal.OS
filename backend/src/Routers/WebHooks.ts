@@ -1,10 +1,21 @@
 import { Router } from "express";
 import scanQueue from "../Queues/scanQueue";
+import rateLimit from "express-rate-limit";
 
 const WebhookRouter = Router();
 
+//Keep this strictly for heavy actions (file uploads, raw pastes, git pushes)
+export const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, 
+    limit: 50, // Strict ceiling for running heavy AI scans
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: { success: false, error: "Too many scan execution requests. Try again in 15 minutes." }
+});
+
+
 // Catch inbound webhook payload trigger payloads from platforms like GitHub
-WebhookRouter.post("/github", async function(req: any, res: any) {
+WebhookRouter.post("/github", apiLimiter , async function(req: any, res: any) {
     // Verify this is a valid push event from GitHub, otherwise skip it
     const eventType = req.headers["x-github-event"];
     if (eventType !== "push") {

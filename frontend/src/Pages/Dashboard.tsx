@@ -48,9 +48,9 @@ export function Dashboard() {
   const fetchHistory = async () => {
     setLoading(true)
     try {
+      // Send userId as query param — backend reads req.query.userId
       const { data } = await axios.get(`${VITE_BACKEND_URL}/SentinalOS/api/Analyze/history`, {
-        data: { userId },
-        headers: { 'Content-Type': 'application/json' },
+        params: { userId },
       })
       setReports(data.history ?? [])
       setLastRefresh(new Date())

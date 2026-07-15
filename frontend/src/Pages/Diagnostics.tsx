@@ -64,10 +64,9 @@ export function Diagnostics() {
     setLoading(true)
     setError('')
     try {
-      // Note: backend reads userId from req.body, so we use POST-style GET with data
+      // Send userId as query param — backend reads req.query.userId
       const { data } = await axios.get(`${VITE_BACKEND_URL}/SentinalOS/api/Analyze/history`, {
-        data: { userId },
-        headers: { 'Content-Type': 'application/json' },
+        params: { userId },
       })
       setReports(data.history ?? [])
     } catch (err: any) {

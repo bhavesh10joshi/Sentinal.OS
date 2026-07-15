@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { gsap } from 'gsap'
-import { Shield, Zap, GitBranch, Search, BarChart3, ArrowRight, Terminal, Lock, CheckCircle } from 'lucide-react'
+import { Shield, Zap, GitBranch, Search, BarChart3, ArrowRight, Terminal, CheckCircle } from 'lucide-react'
 import { Navbar } from '../Components/Navbar'
 import { ThreeBackground } from '../Components/ThreeBackground'
 import { WebGLShader } from '../Components/WebGLShader'
@@ -11,47 +11,42 @@ import { GlassCard } from '../Components/GlassCard'
 const FEATURES = [
   {
     icon: <Shield size={22} />,
-    title: 'Autonomous Security Agents',
-    desc: 'Multi-agent orchestration detects vulnerabilities at the Abstract Syntax Tree level — far beyond regex-based linting.',
+    title: 'AST-Level Security Scanning',
+    desc: 'Tree-Sitter parses your TypeScript, JavaScript, and C++ code into function-level blocks for structured AI review.',
     accent: 'bg-primary-fixed text-primary',
   },
   {
     icon: <GitBranch size={22} />,
-    title: 'GitHub Automation Hub',
-    desc: 'Automatic pull requests, remediation diffs, and merge management — agents work directly in your repo.',
+    title: 'GitHub Webhook Integration',
+    desc: 'Connect your repository via webhook to receive push event notifications. Full file-fetch scan is a planned feature.',
     accent: 'bg-primary-fixed text-primary',
   },
   {
     icon: <Search size={22} />,
-    title: 'Semantic Architecture Search',
-    desc: 'Query your entire codebase semantically. Find patterns, anti-patterns, and hidden dependencies instantly.',
+    title: 'Semantic Code Search',
+    desc: 'Query your indexed codebase using natural language. Powered by Gemini embeddings and Pinecone vector search.',
     accent: 'bg-primary-fixed text-primary',
   },
   {
     icon: <BarChart3 size={22} />,
-    title: 'Historic Analytics Vault',
-    desc: 'Deep-dive into vulnerability trends, fix velocity, and agent performance over time with rich visualizations.',
-    accent: 'bg-primary-fixed text-primary',
-  },
-  {
-    icon: <Lock size={22} />,
-    title: 'Legal Compliance Console',
-    desc: 'GDPR, SOC2, and HIPAA compliance shells — agents audit and report on regulatory exposure automatically.',
+    title: 'Scan Analytics',
+    desc: 'Charts and breakdowns derived from your real scan history — vulnerability counts, severity distribution, and scan success rate.',
     accent: 'bg-primary-fixed text-primary',
   },
   {
     icon: <Zap size={22} />,
     title: 'Playground Workspace',
-    desc: 'Sandbox environment to run custom agent pipelines, test security policies, and iterate on playbooks.',
+    desc: 'Paste raw code or upload a file directly for immediate AST parsing and AI security review with live job streaming.',
     accent: 'bg-primary-fixed text-primary',
   },
 ]
 
+// Note: stats below are placeholders — no real aggregated usage data is tracked
 const STATS = [
-  { value: '47M+', label: 'Lines Analysed' },
-  { value: '12K+', label: 'Vulns Resolved' },
-  { value: '99.8%', label: 'Uptime SLA' },
-  { value: '<2s', label: 'Mean Detection Time' },
+  { value: 'AST', label: 'Function-level parsing' },
+  { value: 'LLM', label: 'Gemini AI analysis' },
+  { value: 'RAG', label: 'Pinecone vector search' },
+  { value: 'BullMQ', label: 'Async job queue' },
 ]
 
 // Sentinel.OS Landing Page — hero, features, stats, CTA

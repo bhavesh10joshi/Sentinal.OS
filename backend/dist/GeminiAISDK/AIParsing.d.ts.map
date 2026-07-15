@@ -1,1 +1,1 @@
-{"version":3,"file":"AIParsing.d.ts","sourceRoot":"","sources":["../../src/GeminiAISDK/AIParsing.ts"],"names":[],"mappings":"AAOA,wBAAsB,gBAAgB,CAAC,WAAW,EAAC,GAAG,gBAuErD"}
+{"version":3,"file":"AIParsing.d.ts","sourceRoot":"","sources":["../../src/GeminiAISDK/AIParsing.ts"],"names":[],"mappings":"AASA,wBAAsB,gBAAgB,CAAC,WAAW,EAAE,GAAG,EAAE,kBAqFxD"}
