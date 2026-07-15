@@ -300,7 +300,7 @@ First use: open `http://localhost:5173` → Login page → enter a display name 
 
 ## License
 
-MIT — Built by Josh Bartholomew
+MIT — Built by Bhavesh Joshi
 
 ---
 
